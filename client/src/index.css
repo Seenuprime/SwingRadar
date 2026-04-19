@@ -345,23 +345,18 @@ tbody td { padding: 11px 18px; vertical-align: middle; }
 }
 .btn-icon:hover { background: var(--surface-hover); color: var(--text-1); }
 
-.btn-open {
-  background: var(--surface-2);
-  color: var(--text-2);
-  border: 1px solid var(--border);
-  font-size: 11.5px;
-}
-.btn-open:hover { background: var(--surface-hover); color: var(--text-1); border-color: rgba(255,255,255,0.12); }
-
-.btn-close-tab {
+.btn-action {
   background: transparent;
   color: var(--text-2);
   border: 1px solid rgba(255,255,255,0.12);
-  padding: 6px 8px;
-  font-size: 12px;
+  font-size: 11.5px;
+  text-decoration: none;
 }
-.btn-close-tab:hover { color: var(--negative); border-color: var(--negative); background: var(--negative-bg); }
-.btn-close-tab:disabled { opacity: 0.25; cursor: not-allowed; }
+.btn-action:hover {
+  background: var(--surface-hover);
+  color: var(--text-1);
+  border-color: rgba(255,255,255,0.25);
+}
 
 .btn-news {
   background: transparent;

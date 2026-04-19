@@ -33,39 +33,11 @@ function relTime(iso) {
 }
 
 export default function StockRow({ stock, isNewsOpen, onToggleNews }) {
-  const chartRef = useRef(null)
-  const fundRef  = useRef(null)
-  const [tabsOpen, setTabsOpen] = useState(false)
   const [newsLoading, setNewsLoading] = useState(false)
   const [newsItems, setNewsItems]     = useState(null)
 
   const chartUrl = `https://www.tradingview.com/chart/?symbol=NSE:${stock.symbol}`
   const fundUrl  = `https://ticker.finology.in/company/${stock.symbol}`
-
-  const handleOpen = () => {
-    try { if (chartRef.current) chartRef.current.close() } catch {}
-    try { if (fundRef.current)  fundRef.current.close()  } catch {}
-    chartRef.current = window.open(chartUrl, `sr_chart_${stock.symbol}`)
-    fundRef.current  = window.open(fundUrl,  `sr_fund_${stock.symbol}`)
-    setTabsOpen(true)
-  }
-
-  const handleClose = () => {
-    try { if (chartRef.current) chartRef.current.close() } catch {}
-    try { if (fundRef.current)  fundRef.current.close()  } catch {}
-    // Fallback: navigate named window then close
-    try {
-      setTimeout(() => {
-        const c = window.open('about:blank', `sr_chart_${stock.symbol}`)
-        if (c) c.close()
-        const f = window.open('about:blank', `sr_fund_${stock.symbol}`)
-        if (f) f.close()
-      }, 60)
-    } catch {}
-    chartRef.current = null
-    fundRef.current  = null
-    setTabsOpen(false)
-  }
 
   const handleNews = async () => {
     onToggleNews()
@@ -127,17 +99,12 @@ export default function StockRow({ stock, isNewsOpen, onToggleNews }) {
         {/* Actions */}
         <td data-label="Actions">
           <div className="actions-cell">
-            <button className="btn btn-open" onClick={handleOpen} title="Open chart + fundamentals">
+            <a className="btn btn-action" href={chartUrl} target="_blank" rel="noreferrer" title="TradingView Chart">
               Chart
-            </button>
-            <button
-              className="btn btn-close-tab"
-              onClick={handleClose}
-              disabled={!tabsOpen}
-              title="Close tabs"
-            >
-              ✕
-            </button>
+            </a>
+            <a className="btn btn-action" href={fundUrl} target="_blank" rel="noreferrer" title="Ticker Finology">
+              Fund
+            </a>
             <button
               className={`btn btn-news ${isNewsOpen ? 'active' : ''}`}
               onClick={handleNews}
