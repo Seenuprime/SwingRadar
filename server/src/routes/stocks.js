@@ -39,58 +39,40 @@ router.post('/fetch-now', async (req, res) => {
 });
 
 const Parser = require('rss-parser');
-const parser = new Parser();
+const parser = new Parser({
+  customFields: {
+    item: ['source']
+  }
+});
 
-// Livemint RSS feeds (markets + companies — trusted Indian financial source)
-const LIVEMINT_FEEDS = [
-  'https://www.livemint.com/rss/markets',
-  'https://www.livemint.com/rss/companies',
-];
-
-// GET /api/news/:symbol  — fetch latest Livemint news filtered by stock symbol
+// GET /api/news/:symbol  — fetch latest news for a stock from trusted Indian sources
 router.get('/news/:symbol', async (req, res) => {
   try {
     const { symbol } = req.params;
-    // Also try the company name if we can derive it, but symbol alone works well
-    const keyword = symbol.toLowerCase();
+    
+    // Search specifically for the symbol on Livemint, Moneycontrol, or Economic Times
+    const query = encodeURIComponent(`"${symbol}" stock (site:livemint.com OR site:moneycontrol.com OR site:economictimes.indiatimes.com)`);
+    const feedUrl = `https://news.google.com/rss/search?q=${query}&hl=en-IN&gl=IN&ceid=IN:en`;
 
-    // Fetch both feeds in parallel
-    const feedResults = await Promise.allSettled(
-      LIVEMINT_FEEDS.map(url => parser.parseURL(url))
-    );
+    const feed = await parser.parseURL(feedUrl);
 
-    // Collect all items from whichever feeds succeeded
-    const allItems = [];
-    for (const result of feedResults) {
-      if (result.status === 'fulfilled') {
-        allItems.push(...(result.value.items || []));
-      }
-    }
-
-    // Filter articles that mention the symbol in title or content snippet
-    const relevant = allItems.filter(item => {
-      const text = `${item.title || ''} ${item.contentSnippet || ''}`.toLowerCase();
-      return text.includes(keyword);
+    // Sort items newest first
+    const sortedItems = (feed.items || []).sort((a, b) => {
+      return new Date(b.pubDate || 0) - new Date(a.pubDate || 0);
     });
 
-    // Sort newest first
-    relevant.sort((a, b) => new Date(b.pubDate || 0) - new Date(a.pubDate || 0));
-
-    // If no symbol-specific results, fall back to latest markets news
-    const pool = relevant.length > 0 ? relevant : allItems.sort(
-      (a, b) => new Date(b.pubDate || 0) - new Date(a.pubDate || 0)
-    );
-
-    const news = pool.slice(0, 8).map(item => ({
+    const news = sortedItems.slice(0, 8).map(item => ({
       title:     item.title || '',
-      publisher: 'Livemint',
+      // Extract publisher from the Google News source tag, or fallback
+      publisher: item.source || feed.title || 'Finance News',
       link:      item.link || '',
       pubDate:   item.pubDate ? new Date(item.pubDate).toISOString() : null,
     }));
 
+    // If no news, we strictly return an empty array so the frontend says "No news found"
     res.json({ symbol, news });
   } catch (err) {
-    console.warn(`[News] Livemint fetch failed for ${req.params.symbol}:`, err.message);
+    console.warn(`[News] Trusted fetch failed for ${req.params.symbol}:`, err.message);
     res.json({ symbol: req.params.symbol, news: [] });
   }
 });
