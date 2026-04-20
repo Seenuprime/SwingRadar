@@ -25,6 +25,7 @@ function SkeletonRow() {
 
 export default function StockTable({ stocks, loading }) {
   const [openNewsSymbol, setOpenNewsSymbol] = useState(null)
+  const [activeSymbol, setActiveSymbol] = useState(null)
 
   const sorted = [...stocks].sort((a, b) => (b.p_return || 0) - (a.p_return || 0))
 
@@ -61,8 +62,10 @@ export default function StockTable({ stocks, loading }) {
                     <StockRow
                       key={stock.symbol + i}
                       stock={stock}
+                      isActive={activeSymbol === stock.symbol}
                       isNewsOpen={openNewsSymbol === stock.symbol}
                       onToggleNews={() => toggleNews(stock.symbol)}
+                      onInteract={() => setActiveSymbol(stock.symbol)}
                     />
                   ))
             }

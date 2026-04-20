@@ -1,5 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import StockTable from './components/StockTable'
+import LoginModal from './components/LoginModal'
+import { useAuth } from './context/AuthContext'
 
 const API = '/api'
 
@@ -118,6 +120,22 @@ export default function App() {
       .catch(() => showToast('error', 'Cannot reach server. Is the backend running?'))
   }, [])
 
+  const { user, loginGoogle, loginGithub, logout } = useAuth();
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const profileRef = useRef(null);
+
+  // Close profile menu if clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (profileRef.current && !profileRef.current.contains(e.target)) {
+        setShowProfileMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
   useEffect(() => {
     if (!selectedDate) return
     setLoading(true)
@@ -180,70 +198,130 @@ export default function App() {
           >
             {theme === 'dark' ? '☀' : '☾'}
           </button>
-          <button className="btn btn-primary" onClick={handleFetch} disabled={fetching}>
-            {fetching ? 'Fetching…' : 'Sync'}
-          </button>
+          
+          {user ? (
+            <div className="user-profile-wrap" ref={profileRef}>
+              <div className="user-profile" onClick={() => setShowProfileMenu(!showProfileMenu)}>
+                <img src={user.avatarUrl || 'https://github.com/identicons/default.png'} alt={user.name || 'User'} className="user-avatar" />
+              </div>
+              {showProfileMenu && (
+                <div className="profile-dropdown fade-in">
+                  <div className="profile-info">
+                    <div className="profile-name">{user.name || 'SwingRadar User'}</div>
+                    <div className="profile-email">{user.email || 'No email provided'}</div>
+                  </div>
+                  <div className="profile-divider"></div>
+                  <button className="btn-logout" onClick={() => { setShowProfileMenu(false); logout(); }}>
+                    Sign Out
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <button className="btn btn-primary" onClick={() => setShowLoginModal(true)}>
+              Sign In
+            </button>
+          )}
         </div>
       </header>
 
-      {/* ── Date Nav ── */}
-      {dates.length > 0 && (
-        <nav className="date-nav">
-          {dates.map(d => (
-            <button
-              key={d.date}
-              className={`date-tab ${selectedDate === d.date ? 'active' : ''}`}
-              onClick={() => setSelectedDate(d.date)}
-            >
-              {fmtDate(d.date)}
-            </button>
-          ))}
-        </nav>
-      )}
-
-      {/* ── Ticker ── */}
-      {stocks.length > 0 && (
-        <div className="ticker-bar">
-          <div
-            className="ticker-track"
-            style={{ animationDuration: `${Math.max(28, stocks.length * 4)}s` }}
-          >
-            {[...stocks, ...stocks].map((s, i) => (
-              <div className="ticker-item" key={i}>
-                <span className="t-sym">{s.symbol}</span>
-                <span className="t-price">₹{Number(s.close).toFixed(0)}</span>
-                <span
-                  className="t-chg"
-                  style={{ color: s.p_return >= 0 ? 'var(--positive)' : 'var(--negative)' }}
+      {/* ── Main Content ── */}
+      {user ? (
+        <>
+          {/* ── Date Nav ── */}
+          {dates.length > 0 && (
+            <nav className="date-nav">
+              {dates.map(d => (
+                <button
+                  key={d.date}
+                  className={`date-tab ${selectedDate === d.date ? 'active' : ''}`}
+                  onClick={() => setSelectedDate(d.date)}
                 >
-                  {s.p_return >= 0 ? '+' : ''}{Number(s.p_return).toFixed(1)}%
-                </span>
-                <span className="sep">·</span>
+                  {fmtDate(d.date)}
+                </button>
+              ))}
+            </nav>
+          )}
+
+          {/* ── Ticker ── */}
+          {stocks.length > 0 && (
+            <div className="ticker-bar">
+              <div
+                className="ticker-track"
+                style={{ animationDuration: `${Math.max(28, stocks.length * 4)}s` }}
+              >
+                {[...stocks, ...stocks].map((s, i) => (
+                  <div className="ticker-item" key={i}>
+                    <span className="t-sym">{s.symbol}</span>
+                    <span className="t-price">₹{Number(s.close).toFixed(0)}</span>
+                    <span
+                      className="t-chg"
+                      style={{ color: s.p_return >= 0 ? 'var(--positive)' : 'var(--negative)' }}
+                    >
+                      {s.p_return >= 0 ? '+' : ''}{Number(s.p_return).toFixed(1)}%
+                    </span>
+                    <span className="sep">·</span>
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
+          )}
+
+          {/* ── Toast ── */}
+          {toast && (
+            <div className={`toast ${toast.type}`} role="alert">
+              {toast.type === 'success' ? '✓' : '✕'} {toast.msg}
+            </div>
+          )}
+
+          {/* ── Table section ── */}
+          <div className="section-row">
+            <span className="section-label">{selectedDate || '—'}</span>
+            {stocks.length > 0 && (
+              <span className="section-meta">{stocks.length} stocks</span>
+            )}
           </div>
-        </div>
+
+          <StockTable stocks={stocks} loading={loading} />
+        </>
+      ) : (
+        <WelcomeSplash onSignIn={() => setShowLoginModal(true)} />
       )}
-
-      {/* ── Toast ── */}
-      {toast && (
-        <div className={`toast ${toast.type}`} role="alert">
-          {toast.type === 'success' ? '✓' : '✕'} {toast.msg}
-        </div>
-      )}
-
-      {/* ── Table section ── */}
-      <div className="section-row">
-        <span className="section-label">{selectedDate || '—'}</span>
-        {stocks.length > 0 && (
-          <span className="section-meta">{stocks.length} stocks</span>
-        )}
-      </div>
-
-      <StockTable stocks={stocks} loading={loading} />
 
       {/* ── Footer ── */}
       <Footer />
+
+      {/* ── Login Modal ── */}
+      {showLoginModal && (
+        <LoginModal onClose={() => setShowLoginModal(false)} />
+      )}
+    </div>
+  )
+}
+
+/* ── Welcome Splash ── */
+function WelcomeSplash({ onSignIn }) {
+  return (
+    <div className="welcome-splash">
+      <div className="welcome-icon">📈</div>
+      <h1 className="welcome-title">Welcome to SwingRadar</h1>
+      <p className="welcome-desc">
+        Your personalized destination for daily NSE swing trading picks. 
+        Please sign in securely to unlock your dashboard and save preferences.
+      </p>
+      
+      <div className="how-it-works">
+        <h3>How We Pick Stocks</h3>
+        <p>
+          SwingRadar utilizes advanced proprietary algorithms to analyze vast amounts of market data daily. 
+          By combining intelligent momentum detection with strict risk-to-reward filters, we bring you a curated
+          selection of the highest-probability trading opportunities across the NSE, saving you hours of manual research.
+        </p>
+      </div>
+
+      <button className="btn btn-primary welcome-btn" onClick={onSignIn}>
+        Sign In to Continue
+      </button>
     </div>
   )
 }

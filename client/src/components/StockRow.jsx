@@ -32,7 +32,7 @@ function relTime(iso) {
   return 'just now'
 }
 
-export default function StockRow({ stock, isNewsOpen, onToggleNews }) {
+export default function StockRow({ stock, isActive, isNewsOpen, onToggleNews, onInteract }) {
   const [newsLoading, setNewsLoading] = useState(false)
   const [newsItems, setNewsItems]     = useState(null)
 
@@ -40,7 +40,8 @@ export default function StockRow({ stock, isNewsOpen, onToggleNews }) {
   const fundUrl  = `https://ticker.finology.in/company/${stock.symbol}`
 
   const handleNews = async () => {
-    onToggleNews()
+    onInteract();
+    onToggleNews();
     if (newsItems !== null) return
     setNewsLoading(true)
     try {
@@ -59,7 +60,7 @@ export default function StockRow({ stock, isNewsOpen, onToggleNews }) {
 
   return (
     <>
-      <tr className="stock-row">
+      <tr className={`stock-row ${isActive ? 'active-row' : ''}`}>
 
         {/* Symbol */}
         <td data-label="Symbol">
@@ -99,10 +100,10 @@ export default function StockRow({ stock, isNewsOpen, onToggleNews }) {
         {/* Actions */}
         <td data-label="Actions">
           <div className="actions-cell">
-            <a className="btn btn-action" href={chartUrl} target="_blank" rel="noreferrer" title="TradingView Chart">
+            <a className="btn btn-action" href={chartUrl} onClick={onInteract} target="_blank" rel="noreferrer" title="TradingView Chart">
               Chart
             </a>
-            <a className="btn btn-action" href={fundUrl} target="_blank" rel="noreferrer" title="Ticker Finology">
+            <a className="btn btn-action" href={fundUrl} onClick={onInteract} target="_blank" rel="noreferrer" title="Ticker Finology">
               Fund
             </a>
             <button
