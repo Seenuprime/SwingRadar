@@ -55,6 +55,12 @@ mongoose
     app.listen(PORT, () => {
       console.log(`[Server] Running on http://localhost:${PORT}`);
       startCronJob();
+      
+      // Render free tier sleeps after 15 mins of inactivity.
+      // We run the pipeline immediately on boot to ensure the first visitor
+      // always triggers a daily update if the cron job was skipped while sleeping.
+      const { runFetchPipeline } = require('./services/cronJob');
+      runFetchPipeline(); 
     });
   })
   .catch((err) => {

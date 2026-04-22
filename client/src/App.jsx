@@ -111,13 +111,34 @@ export default function App() {
   }, [theme])
 
   useEffect(() => {
+    // 1. Initial cached fetch
     fetch(`${API}/dates`)
       .then(r => r.json())
       .then(data => {
         setDates(data)
         if (data.length > 0) setSelectedDate(data[0].date)
       })
-      .catch(() => showToast('error', 'Cannot reach server. Is the backend running?'))
+      .catch(() => showToast('error', 'Cannot reach server.'))
+
+    // 2. Silent Background Sync to ensure data is fresh (Render sleep workaround)
+    const silentBgSync = async () => {
+      try {
+        const res = await fetch(`${API}/fetch-now`, { method: 'POST' });
+        const data = await res.json();
+        // If data was missing or behind and just got updated
+        if (data.success && !data.upToDate) {
+          const dr = await fetch(`${API}/dates`);
+          const dd = await dr.json();
+          setDates(dd);
+          if (dd.length > 0) setSelectedDate(dd[0].date);
+        }
+      } catch (err) {
+        // fail silently in background
+      }
+    };
+    
+    // Slight delay so it doesn't block the initial React render
+    setTimeout(silentBgSync, 1500);
   }, [])
 
   const { user, loginGoogle, loginGithub, logout } = useAuth();
@@ -148,26 +169,6 @@ export default function App() {
   function showToast(type, msg, duration = 4000) {
     setToast({ type, msg })
     setTimeout(() => setToast(null), duration)
-  }
-
-  const handleFetch = async () => {
-    setFetching(true)
-    try {
-      const res  = await fetch(`${API}/fetch-now`, { method: 'POST' })
-      const data = await res.json()
-      if (data.success) {
-        showToast('success', data.upToDate ? 'Data is already up to date.' : 'Data fetched successfully.')
-        const dr = await fetch(`${API}/dates`)
-        const dd = await dr.json()
-        setDates(dd)
-        if (dd.length > 0) setSelectedDate(dd[0].date)
-      } else {
-        showToast('error', data.error || 'Fetch failed.')
-      }
-    } catch {
-      showToast('error', 'Network error.')
-    }
-    setFetching(false)
   }
 
   const stocks = stockData?.stocks || []
